@@ -1,0 +1,30 @@
+
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+
+# Generated data
+data/bronze/*
+data/silver/*
+data/quarantine/*
+
+# Application logs
+logs/*
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor and OS
+.vscode/
+.DS_Store
+Thumbs.db

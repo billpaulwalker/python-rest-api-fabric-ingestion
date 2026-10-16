@@ -1,0 +1,20 @@
+
+project:
+  name: github-issues-ingestion
+
+api:
+  base_url: https://api.github.com
+  owner: microsoft
+  repository: vscode
+  endpoint: issues
+  timeout_seconds: 30
+  per_page: 25
+  state: all
+  api_version: "2026-03-10"
+
+storage:
+  bronze_directory: data/bronze
+
+logging:
+  directory: logs
+  level: INFO
