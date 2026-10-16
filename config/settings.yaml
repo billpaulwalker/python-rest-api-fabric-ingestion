@@ -8,12 +8,23 @@ api:
   repository: vscode
   endpoint: issues
   timeout_seconds: 30
-  per_page: 25
+  per_page: 100
   state: all
   api_version: "2026-03-10"
 
+  # API reliability
+  max_attempts: 4
+  initial_backoff_seconds: 1
+  max_rate_limit_wait_seconds: 120
+
+  # Extraction
+  max_pages: 100
+  initial_lookback_days: 7
+  watermark_overlap_minutes: 5
+
 storage:
   bronze_directory: data/bronze
+  state_directory: data/state
 
 logging:
   directory: logs

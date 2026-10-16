@@ -1,44 +1,108 @@
 
-"""Run the initial GitHub issue ingestion."""
+"""Coordinate incremental GitHub issue extraction."""
 
 import json
 import logging
+import os
 import uuid
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .client import GitHubAPIClient
+from .state import load_state, save_state
 
 
 logger = logging.getLogger(__name__)
 
 
+def parse_timestamp(value: str) -> datetime:
+    """Parse a GitHub UTC timestamp."""
+
+    return datetime.fromisoformat(
+        value.replace("Z", "+00:00")
+    ).astimezone(timezone.utc)
+
+
+def format_timestamp(value: datetime) -> str:
+    """Format a UTC timestamp for GitHub's since parameter."""
+
+    return value.astimezone(timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+def write_bronze(path: Path, records: list) -> None:
+    """Write JSON through a temporary file."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+
+    with temporary.open("w", encoding="utf-8") as file:
+        json.dump(records, file, indent=2, ensure_ascii=False)
+        file.flush()
+        os.fsync(file.fileno())
+
+    os.replace(temporary, path)
+
+
 def run_ingestion(config: dict, token: str) -> Path:
-    """Fetch GitHub issues and write a raw Bronze JSON file."""
+    """Execute incremental API extraction and persist state."""
 
     run_id = str(uuid.uuid4())
-    started_at = datetime.now(timezone.utc)
+    run_started = datetime.now(timezone.utc)
 
-    api_config = config["api"]
-    storage_config = config["storage"]
+    api = config["api"]
+    storage = config["storage"]
 
-    bronze_path = Path(
-        storage_config["bronze_directory"]
-    )
-    bronze_path.mkdir(parents=True, exist_ok=True)
+    source_key = f"{api['owner']}_{api['repository']}"
+
+    bronze_directory = Path(storage["bronze_directory"])
+    state_directory = Path(storage["state_directory"])
+
+    state_path = state_directory / f"{source_key}.json"
+    previous_state = load_state(state_path)
+
+    previous_watermark = previous_state.get("watermark")
+
+    if previous_watermark:
+        since_date = parse_timestamp(previous_watermark) - timedelta(
+            minutes=api["watermark_overlap_minutes"]
+        )
+    else:
+        since_date = run_started - timedelta(
+            days=api["initial_lookback_days"]
+        )
+
+    since = format_timestamp(since_date)
 
     logger.info(
-        "Starting ingestion | run_id=%s",
-        run_id,
+        "Ingestion started",
+        extra={
+            "run_id": run_id,
+            "stage": "extract",
+            "status": "STARTED",
+        },
+    )
+
+    logger.info(
+        "Extraction window | since=%s | run_cutoff=%s",
+        since,
+        format_timestamp(run_started),
     )
 
     client = GitHubAPIClient(
-        base_url=api_config["base_url"],
+        base_url=api["base_url"],
         token=token,
-        timeout=api_config["timeout_seconds"],
-        api_version=api_config["api_version"],
+        timeout=api["timeout_seconds"],
+        api_version=api["api_version"],
+        max_attempts=api["max_attempts"],
+        initial_backoff=api["initial_backoff_seconds"],
+        max_rate_limit_wait=api["max_rate_limit_wait_seconds"],
     )
+
+    all_records = []
+    page_count = 0
 
     try:
         user = client.verify_authentication()
@@ -48,51 +112,100 @@ def run_ingestion(config: dict, token: str) -> Path:
             user["login"],
         )
 
-        records = client.get_issues(
-            owner=api_config["owner"],
-            repository=api_config["repository"],
-            per_page=api_config["per_page"],
-            state=api_config["state"],
+        for page in client.get_issues(
+            owner=api["owner"],
+            repository=api["repository"],
+            per_page=api["per_page"],
+            state=api["state"],
+            since=since,
+            max_pages=api["max_pages"],
+        ):
+            page_count += 1
+
+            # Do not advance the watermark using records
+            # updated after this execution began.
+            for record in page:
+                updated_at = parse_timestamp(
+                    record["updated_at"]
+                )
+
+                if updated_at <= run_started:
+                    all_records.append(record)
+
+        # Preserve all returned issue-like source records.
+        # Phase 3 will exclude pull requests from Silver.
+        output_file = bronze_directory / (
+            f"github_issues_{run_id}.json"
         )
 
-        logger.info(
-            "API records retrieved | count=%d",
-            len(records),
-        )
+        write_bronze(output_file, all_records)
 
-        # Save the complete first-page API response.
-        output_file = bronze_path / f"github_issues_{run_id}.json"
+        # The source watermark only moves after a complete
+        # successful extraction and durable Bronze write.
+        new_watermark = previous_watermark
 
-        with output_file.open(
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                records,
-                file,
-                indent=2,
-                ensure_ascii=False,
+        if all_records:
+            maximum = max(
+                parse_timestamp(r["updated_at"])
+                for r in all_records
             )
 
+            if (
+                not previous_watermark
+                or maximum > parse_timestamp(previous_watermark)
+            ):
+                new_watermark = format_timestamp(maximum)
+
+        # An empty initial run still establishes a conservative
+        # checkpoint after a successful complete extraction.
+        if not new_watermark:
+            new_watermark = since
+
+        new_state = {
+            "source": f"{api['owner']}/{api['repository']}",
+            "watermark": new_watermark,
+            "last_run_id": run_id,
+            "last_success_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "last_bronze_file": str(output_file),
+            "last_record_count": len(all_records),
+            "last_page_count": page_count,
+        }
+
+        save_state(state_path, new_state)
+
         duration = (
-            datetime.now(timezone.utc) - started_at
+            datetime.now(timezone.utc) - run_started
         ).total_seconds()
 
         logger.info(
-            "Ingestion successful | run_id=%s | "
-            "records=%d | duration=%.2fs | file=%s",
-            run_id,
-            len(records),
-            duration,
-            output_file,
+            "Ingestion completed",
+            extra={
+                "run_id": run_id,
+                "stage": "complete",
+                "status": "SUCCESS",
+                "records": len(all_records),
+                "pages": page_count,
+                "requests": client.request_count,
+                "retries": client.retry_count,
+                "duration_seconds": round(duration, 2),
+            },
         )
 
         return output_file
 
     except Exception:
         logger.exception(
-            "Ingestion failed | run_id=%s",
-            run_id,
+            "Ingestion failed",
+            extra={
+                "run_id": run_id,
+                "stage": "extract",
+                "status": "FAILED",
+                "pages": page_count,
+                "requests": client.request_count,
+                "retries": client.retry_count,
+            },
         )
         raise
 

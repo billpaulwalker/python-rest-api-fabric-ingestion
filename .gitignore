@@ -28,3 +28,6 @@ logs/*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local extraction state
+data/state/

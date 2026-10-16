@@ -1,5 +1,5 @@
 
-"""Command-line entry point for API ingestion."""
+"""Command-line entry point."""
 
 import argparse
 import logging
@@ -11,61 +11,41 @@ import yaml
 from dotenv import load_dotenv
 
 from .ingestion import run_ingestion
+from .logging_utils import configure_logging
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="GitHub REST API ingestion"
+        description="Incremental GitHub REST API ingestion"
     )
 
     parser.add_argument(
         "--config",
         default="config/settings.yaml",
-        help="Path to YAML configuration",
+        help="Path to configuration file",
     )
 
     args = parser.parse_args()
 
-    # Load local development credentials.
     load_dotenv()
 
     token = os.getenv("GITHUB_TOKEN")
 
     if not token:
-        raise ValueError(
-            "GITHUB_TOKEN is missing from the environment"
-        )
+        raise ValueError("GITHUB_TOKEN is missing")
 
-    config_path = Path(args.config)
-
-    with config_path.open(
+    with Path(args.config).open(
         "r",
         encoding="utf-8",
     ) as file:
         config = yaml.safe_load(file)
 
-    log_directory = Path(
-        config["logging"]["directory"]
-    )
-    log_directory.mkdir(
-        parents=True,
-        exist_ok=True,
+    configure_logging(
+        directory=config["logging"]["directory"],
+        level=config["logging"]["level"],
     )
 
-    logging.basicConfig(
-        level=config["logging"]["level"],
-        format=(
-            "%(asctime)s | %(levelname)s | "
-            "%(name)s | %(message)s"
-        ),
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(
-                log_directory / "ingestion.log",
-                encoding="utf-8",
-            ),
-        ],
-    )
+    logging.info("Configuration loaded")
 
     run_ingestion(
         config=config,
