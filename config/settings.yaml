@@ -25,6 +25,8 @@ api:
 storage:
   bronze_directory: data/bronze
   state_directory: data/state
+  silver_file: data/silver/github_issues.parquet
+  quarantine_file: data/quarantine/github_issues_rejected.jsonl
 
 logging:
   directory: logs

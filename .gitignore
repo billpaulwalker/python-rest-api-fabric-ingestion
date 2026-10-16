@@ -31,3 +31,5 @@ Thumbs.db
 
 # Local extraction state
 data/state/
+data/silver/
+data/quarantine/

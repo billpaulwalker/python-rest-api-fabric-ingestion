@@ -51,3 +51,53 @@ Execution logs are stored in `logs/`.
 - Automated testing
 - Microsoft Fabric Lakehouse integration
 - Fabric Data Pipeline orchestration
+
+## Local Bronze/Silver Processing
+
+The ingestion framework implements a two-stage local data pipeline.
+
+**Bronze — Raw Ingestion**
+
+Retrieves GitHub issue data via REST API, including pagination, incremental retrieval, retries, and rate-limit handling.
+
+```powershell
+python -m api_ingestion --config config/settings.yaml
+```
+
+Raw API responses are stored in `data/bronze/`.
+
+**Silver — Standardization and Validation**
+
+Processes Bronze JSON files using reusable Python transformation and validation functions.
+
+The processing stage:
+
+- Excludes pull requests returned by the GitHub issues endpoint.
+- Flattens nested JSON fields.
+- Validates required fields, data types, and timestamps.
+- Quarantines malformed records with rejection reasons.
+- Deduplicates records by issue ID, retaining the latest version.
+- Publishes an explicitly typed Parquet dataset.
+
+```powershell
+python -m api_ingestion.silver --config config/settings.yaml
+```
+
+**Outputs**
+
+- `data/silver/github_issues.parquet` — current deduplicated issue snapshot
+- `data/quarantine/github_issues_rejected.jsonl` — rejected source records
+
+**Testing**
+
+```powershell
+python -m pytest tests/ -v
+```
+
+**Current limitations**
+
+The local Silver stage rebuilds its dataset from all available Bronze files. This approach supports safe reruns for small datasets but is not optimized for large-scale incremental processing.
+
+The extraction checkpoint is separate from Silver processing completion. A later phase will introduce improved state management and recovery controls.
+
+Microsoft Fabric integration and Delta Lake incremental upserts are planned for subsequent phases.
