@@ -27,6 +27,7 @@ storage:
   state_directory: data/state
   silver_file: data/silver/github_issues.parquet
   quarantine_file: data/quarantine/github_issues_rejected.jsonl
+  operations_db: data/state/operations.db
 
 logging:
   directory: logs
