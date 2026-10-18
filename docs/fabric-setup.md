@@ -23,6 +23,12 @@ each comes from:
 
 If neither is set, the run fails at `bronze` with `Missing runtime setting`.
 
+The committed pipeline (`pipelines/pl_github_issues_ingestion.json`)
+supplies both values as base parameters on its notebook activity, so
+pipeline runs need no environment properties. Interactive runs need the
+Spark properties. These values identify an environment but are not
+secrets. Use deployment pipeline rules to change them per environment.
+
 The GitHub token itself is only ever read from Key Vault with
 `notebookutils.credentials.getSecret`. The identity running the notebook
 needs the Key Vault Secrets User role (or a Get secret access policy).

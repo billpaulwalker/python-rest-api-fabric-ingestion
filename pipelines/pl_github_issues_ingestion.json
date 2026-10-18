@@ -1,0 +1,109 @@
+{
+    "name": "pl_github_issues_ingestion",
+    "objectId": "dfbd1620-d4e0-4a97-978a-683be890a3fb",
+    "properties": {
+        "activities": [
+            {
+                "name": "nb_ingest_github_issues",
+                "type": "TridentNotebook",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.02:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 60,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "notebookId": "b472bee9-b074-4e3e-93c3-ee1e7fc340d2",
+                    "workspaceId": "bdcc7d26-cadc-4812-9124-596611c87bfe",
+                    "parameters": {
+                        "mode": {
+                            "value": {
+                                "value": "@pipeline().parameters.mode",
+                                "type": "Expression"
+                            },
+                            "type": "string"
+                        },
+                        "recover_run_id": {
+                            "value": {
+                                "value": "@pipeline().parameters.recover_run_id",
+                                "type": "Expression"
+                            },
+                            "type": "string"
+                        },
+                        "owner": {
+                            "value": "microsoft",
+                            "type": "string"
+                        },
+                        "repository_name": {
+                            "value": "vscode",
+                            "type": "string"
+                        },
+                        "key_vault_url": {
+                            "value": "https://kv-api-ingestion-dev-bpw.vault.azure.net/",
+                            "type": "string"
+                        },
+                        "github_token_secret_name": {
+                            "value": "github-api-token",
+                            "type": "string"
+                        },
+                        "api_base_url": {
+                            "value": "https://api.github.com",
+                            "type": "string"
+                        },
+                        "api_version": {
+                            "value": "2026-03-10",
+                            "type": "string"
+                        },
+                        "api_timeout_seconds": {
+                            "value": "30",
+                            "type": "int"
+                        },
+                        "per_page": {
+                            "value": "100",
+                            "type": "int"
+                        },
+                        "max_pages": {
+                            "value": "100",
+                            "type": "int"
+                        },
+                        "max_attempts": {
+                            "value": "4",
+                            "type": "int"
+                        },
+                        "initial_backoff_seconds": {
+                            "value": "1",
+                            "type": "int"
+                        },
+                        "max_rate_limit_wait_seconds": {
+                            "value": "120",
+                            "type": "int"
+                        },
+                        "initial_lookback_days": {
+                            "value": "7",
+                            "type": "int"
+                        },
+                        "watermark_overlap_minutes": {
+                            "value": "5",
+                            "type": "int"
+                        }
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "mode": {
+                "type": "string",
+                "defaultValue": "incremental"
+            },
+            "recover_run_id": {
+                "type": "string",
+                "defaultValue": ""
+            }
+        },
+        "concurrency": 1,
+        "lastModifiedByObjectId": "d3d1dc73-417c-42b5-a8d5-33ba6bae5caa",
+        "lastPublishTime": "2026-10-18T16:57:53Z"
+    }
+}

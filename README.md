@@ -101,3 +101,17 @@ The local Silver stage rebuilds its dataset from all available Bronze files. Thi
 The extraction checkpoint is separate from Silver processing completion. A later phase will introduce improved state management and recovery controls.
 
 Microsoft Fabric integration and Delta Lake incremental upserts are planned for subsequent phases.
+
+## Operational Reliability and Recovery
+
+The local pipeline tracks each run in SQLite and can rebuild Silver from existing Bronze files.
+
+```powershell
+# Normal execution
+python -m api_ingestion.pipeline --mode full
+
+# Recover Silver from existing Bronze
+python -m api_ingestion.pipeline --mode silver-only
+```
+
+For the Fabric pipeline (`pipelines/pl_github_issues_ingestion.json`) and notebook, see [docs/fabric-setup.md](docs/fabric-setup.md) and the runbook in [docs/fabric-operations.md](docs/fabric-operations.md).
