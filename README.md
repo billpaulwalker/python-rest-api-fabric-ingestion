@@ -1,5 +1,7 @@
 # Python REST API Ingestion Framework with Microsoft Fabric
 
+[![Tests](https://github.com/billpaulwalker/python-rest-api-fabric-ingestion/actions/workflows/tests.yml/badge.svg)](https://github.com/billpaulwalker/python-rest-api-fabric-ingestion/actions/workflows/tests.yml)
+
 A reusable Python REST API ingestion framework demonstrating incremental data extraction, fault-tolerant HTTP integration, Bronze/Silver processing, data validation, operational logging, failure recovery, and Microsoft Fabric Lakehouse integration.
 
 ## Overview
@@ -125,6 +127,7 @@ tests/                Automated unit and recovery tests
 notebooks/            Microsoft Fabric notebook implementation
 pipelines/            Microsoft Fabric Data Pipeline definition
 docs/                 Architecture, deployment, operations, and design decisions
+.github/workflows/    GitHub Actions test workflow
 data/                 Local generated datasets (excluded from Git)
 logs/                 Local execution logs (excluded from Git)
 ```
@@ -247,6 +250,8 @@ Tests cover:
 - Fabric pipeline wiring and notebook hygiene (no outputs, secrets, or Key Vault URLs committed)
 
 The tests use mocked API responses where practical and do not require access to the production Fabric workspace. Notebook tests run the notebook's code cells against stubbed Spark and Fabric objects.
+
+GitHub Actions runs the suite on every push to `main` and every pull request, on Ubuntu and Windows with Python 3.11 and 3.12 (`.github/workflows/tests.yml`).
 
 ## Operational Recovery
 
