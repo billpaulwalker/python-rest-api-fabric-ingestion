@@ -1,3 +1,5 @@
+<img src="docs/project-banner.png" alt="Production-style REST API to Microsoft Fabric ingestion pipeline: GitHub REST API, Python client, Bronze raw JSON, validation, and Silver Delta MERGE" width="100%" />
+
 # Python REST API Ingestion Framework with Microsoft Fabric
 
 [![Tests](https://github.com/billpaulwalker/python-rest-api-fabric-ingestion/actions/workflows/tests.yml/badge.svg)](https://github.com/billpaulwalker/python-rest-api-fabric-ingestion/actions/workflows/tests.yml)
